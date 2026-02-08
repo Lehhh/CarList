@@ -1,0 +1,30 @@
+server:
+  port: ${SERVER_PORT:8081}
+
+spring:
+  datasource:
+    url: ${DB_URL}
+    username: ${DB_USER}
+    password: ${DB_PASS}
+  jpa:
+    hibernate:
+      ddl-auto: ${JPA_DDL_AUTO:validate}
+    open-in-view: false
+  flyway:
+    enabled: ${FLYWAY_ENABLED:true}
+
+carstore:
+  core:
+    base-url: ${CORE_BASE_URL}
+
+security:
+  jwt:
+    public-key-path: ${JWT_PUBLIC_KEY_PATH:/app/keys/public_key.pem}
+
+springdoc:
+  api-docs:
+    enabled: ${SPRINGDOC_API_DOCS_ENABLED:false}
+    path: /v3/api-docs
+  swagger-ui:
+    enabled: ${SPRINGDOC_SWAGGER_UI_ENABLED:false}
+    path: /swagger-ui.html

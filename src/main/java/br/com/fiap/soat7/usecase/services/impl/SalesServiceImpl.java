@@ -1,0 +1,136 @@
+package br.com.fiap.soat7.usecase.services.impl;
+
+import br.com.fiap.soat7.adapter.repositories.CarRepository;
+import br.com.fiap.soat7.adapter.repositories.SaleRepository;
+import br.com.fiap.soat7.data.domain.Car;
+import br.com.fiap.soat7.data.domain.Sale;
+import br.com.fiap.soat7.data.domain.dto.CarSoldEvent;
+import br.com.fiap.soat7.data.domain.dto.PaymentWebhookRequest;
+import br.com.fiap.soat7.data.domain.dto.PurchaseResponse;
+import br.com.fiap.soat7.usecase.services.SalesService;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.reactive.function.client.WebClient;
+
+import java.time.Instant;
+import java.util.List;
+import java.util.UUID;
+
+@Service
+@RequiredArgsConstructor
+public class SalesServiceImpl implements SalesService {
+
+    private final WebClient client;
+    private final SaleRepository saleRepo;
+    private final CarRepository carRepo;
+
+    @Override
+    public List<Sale> listAvailable() {
+        return saleRepo.findByStatusOrderByLockedPriceAsc(Sale.Status.AVAILABLE);
+    }
+
+    @Override
+    public List<Sale> listSold() {
+        return saleRepo.findByStatusOrderByLockedPriceAsc(Sale.Status.PAID);
+    }
+
+    @Override
+    @Transactional
+    public PurchaseResponse purchase(Long carId) {
+        Car car = carRepo.findById(carId)
+                .orElseThrow(() -> new IllegalArgumentException("Car não encontrado no serviço de venda"));
+
+        // LOCK no registro de sale por carId (evita 2 compras simultâneas)
+        Sale sale = saleRepo.lockByCarId(carId).orElse(null);
+
+        if (sale == null) {
+            sale = new Sale();
+            sale.setCarId(carId);
+            sale.setLockedPrice(car.getPrice());
+            sale.setStatus(Sale.Status.AVAILABLE);
+        }
+
+        // já vendido
+        if (sale.getStatus() == Sale.Status.PAID) {
+            throw new IllegalStateException("Car já foi vendido");
+        }
+
+        // reservado e ainda válido
+        if (sale.getStatus() == Sale.Status.RESERVED
+                && sale.getReservedUntil() != null
+                && sale.getReservedUntil().isAfter(Instant.now())) {
+            throw new IllegalStateException("Car já está reservado");
+        }
+
+        // reserva / inicia compra
+        sale.setStatus(Sale.Status.RESERVED);
+        sale.setReservedUntil(Instant.now().plusSeconds(15 * 60));
+        sale.setPaymentCode(UUID.randomUUID().toString());
+
+        Sale saved = saleRepo.save(sale);
+
+        return new PurchaseResponse(
+                saved.getId(),
+                saved.getCarId(),
+                saved.getPaymentCode(),
+                saved.getReservedUntil()
+        );
+    }
+
+    @Override
+    @Transactional
+    public void handlePaymentWebhook(PaymentWebhookRequest req) {
+        String st = req.status() == null ? "" : req.status().toUpperCase();
+
+        Sale sale = saleRepo.findByPaymentCode(req.paymentCode())
+                .orElseThrow(() -> new IllegalArgumentException("paymentCode não encontrado"));
+
+        // idempotência
+        if (sale.getStatus() == Sale.Status.PAID && "PAID".equals(st)) return;
+        if (sale.getStatus() == Sale.Status.CANCELED && "CANCELED".equals(st)) return;
+
+        if ("PAID".equals(st)) {
+            sale.setStatus(Sale.Status.PAID);
+            sale.setBuyerCpf(req.buyerCpf());
+            sale.setSoldAt(req.eventAt() != null ? req.eventAt() : Instant.now());
+            sale.setReservedUntil(null);
+
+            saleRepo.save(sale);
+
+            // ✅ notifica Core (fake)
+            notifyCoreCarSold(sale);
+
+            return;
+        }
+
+        if ("CANCELED".equals(st)) {
+            sale.setStatus(Sale.Status.CANCELED);
+            sale.setReservedUntil(null);
+
+            saleRepo.save(sale);
+            return;
+        }
+
+        throw new IllegalArgumentException("status inválido (use PAID ou CANCELED)");
+    }
+
+    private void notifyCoreCarSold(Sale sale) {
+        CarSoldEvent event = new CarSoldEvent(
+                sale.getCarId(),
+                sale.getBuyerCpf(),
+                sale.getSoldAt(),
+                sale.getPaymentCode()
+        );
+
+        client.post()
+                .uri("/internal/cars/{carId}/sold", sale.getCarId())
+                .bodyValue(event)
+                .retrieve()
+                .toBodilessEntity()
+                .doOnSuccess(r -> System.out.println("VIEW notificou Core venda carId=" + sale.getCarId()))
+                .doOnError(e -> System.err.println("Erro ao notificar Core: " + e.getMessage()))
+                .block(); // ✅ melhor que subscribe() aqui
+    }
+
+}

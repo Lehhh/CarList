@@ -1,0 +1,51 @@
+services:
+  postgres_view:
+    image: postgres:16
+    container_name: carstore_postgres_view
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-carstore_view}
+      POSTGRES_USER: ${POSTGRES_USER:-view_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-view_pass}
+    ports:
+      - "${DB_PORT_EXTERNAL:-5433}:5432"
+    volumes:
+      - pg_view_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-view_user} -d ${POSTGRES_DB:-carstore_view}"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  carstore_view_app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: carstore_view_app
+    depends_on:
+      postgres_view:
+        condition: service_healthy
+    ports:
+      - "${APP_PORT_EXTERNAL:-8081}:${SERVER_PORT:-8081}"
+    environment:
+      SERVER_PORT: ${SERVER_PORT:-8081}
+
+      # DB (atenção: host é o nome do service do postgres no compose)
+      DB_URL: ${DB_URL:-jdbc:postgresql://postgres_view:5432/carstore_view}
+      DB_USER: ${DB_USER:-view_user}
+      DB_PASS: ${DB_PASS:-view_pass}
+
+      # Integração com Core
+      CORE_BASE_URL: ${CORE_BASE_URL:-http://host.docker.internal:8080}
+
+      # JWT public key (se você montar o arquivo no container)
+      JWT_PUBLIC_KEY_PATH: ${JWT_PUBLIC_KEY_PATH:-/app/keys/public_key.pem}
+
+      # Flyway/JPA
+      FLYWAY_ENABLED: ${FLYWAY_ENABLED:-true}
+      JPA_DDL_AUTO: ${JPA_DDL_AUTO:-validate}
+    volumes:
+      # monte a pasta keys (coloque public_key.pem dentro)
+      - ./keys:/app/keys:ro
+
+volumes:
+  pg_view_data:
