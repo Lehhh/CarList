@@ -1,0 +1,131 @@
+name: CI/CD - CarStoreView (Tests + SonarCloud + Deploy EC2)
+
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+
+concurrency:
+  group: deploy-main
+  cancel-in-progress: true
+
+jobs:
+  test_and_sonar:
+    name: Tests + SonarCloud
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "24"
+          cache: maven
+
+      - name: Run tests
+        run: ./mvnw clean verify
+
+      - name: SonarCloud Scan
+        uses: SonarSource/sonarcloud-github-action@v2
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        with:
+          args: >
+            -Dsonar.projectKey=${{ secrets.SONAR_PROJECT_KEY }}
+            -Dsonar.organization=${{ secrets.SONAR_ORG }}
+            -Dsonar.host.url=https://sonarcloud.io
+
+  build_and_push:
+    name: Build & Push Docker (ECR)
+    runs-on: ubuntu-latest
+    needs: [test_and_sonar]
+    env:
+      AWS_REGION: ${{ secrets.AWS_REGION }}
+      ECR_REPOSITORY: ${{ secrets.ECR_REPOSITORY }}
+    outputs:
+      image_uri: ${{ steps.meta.outputs.image_uri }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id:     ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region:            ${{ secrets.AWS_REGION }}
+
+      - name: Login ECR
+        id: ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build image
+        run: |
+          IMAGE_TAG=${GITHUB_SHA}
+          IMAGE_URI=${{ steps.ecr.outputs.registry }}/${ECR_REPOSITORY}:${IMAGE_TAG}
+          echo "IMAGE_URI=$IMAGE_URI" >> $GITHUB_ENV
+          docker build -t "$IMAGE_URI" .
+
+      - name: Push image
+        run: docker push "$IMAGE_URI"
+
+      - name: Export image uri
+        id: meta
+        run: echo "image_uri=${IMAGE_URI}" >> "$GITHUB_OUTPUT"
+
+  deploy:
+    name: Deploy EC2
+    runs-on: ubuntu-latest
+    needs: [build_and_push]
+    steps:
+      - name: Deploy via SSH (docker compose pull/up)
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          key: ${{ secrets.EC2_SSH_PRIVATE_KEY }}
+          script: |
+            set -euo pipefail
+
+            APP_DIR="${{ secrets.EC2_APP_DIR }}"
+            mkdir -p "$APP_DIR"
+            cd "$APP_DIR"
+
+            # Gera/atualiza .env para o docker compose do CarStoreView
+            cat > .env <<EOF
+            APP_IMAGE=${{ needs.build_and_push.outputs.image_uri }}
+
+            # --- App ---
+            SERVER_PORT=${{ secrets.SERVER_PORT }}
+
+            # --- DB (bate com application.yml) ---
+            DB_URL=${{ secrets.DB_URL }}
+            DB_USER=${{ secrets.DB_USER }}
+            DB_PASS=${{ secrets.DB_PASS }}
+
+            # --- Flyway/JPA ---
+            FLYWAY_ENABLED=${{ secrets.FLYWAY_ENABLED }}
+            JPA_DDL_AUTO=${{ secrets.JPA_DDL_AUTO }}
+
+            # --- Integração (View -> Core) ---
+            CORE_BASE_URL=${{ secrets.CORE_BASE_URL }}
+
+            # --- JWT (validação) ---
+            JWT_PUBLIC_KEY_PATH=${{ secrets.JWT_PUBLIC_KEY_PATH }}
+
+            # --- Compose infra (opcional, se seu compose usar) ---
+            DB_PORT_PUBLISHED=${{ secrets.DB_PORT_PUBLISHED }}
+            APP_PORT_PUBLISHED=${{ secrets.APP_PORT_PUBLISHED }}
+            EOF
+
+            # Login no ECR (para pull da imagem)
+            aws ecr get-login-password --region "${{ secrets.AWS_REGION }}"               | docker login --username AWS --password-stdin "${{ secrets.EC2_ECR_REGISTRY }}"
+
+            docker compose --env-file .env pull
+            docker compose --env-file .env up -d
+
+            docker image prune -f
