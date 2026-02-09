@@ -9,6 +9,7 @@ import br.com.fiap.soat7.data.domain.dto.PaymentWebhookRequest;
 import br.com.fiap.soat7.data.domain.dto.PurchaseResponse;
 import br.com.fiap.soat7.usecase.services.SalesService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.log4j.Log4j2;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.reactive.function.client.WebClient;
@@ -19,6 +20,7 @@ import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
+@Log4j2
 public class SalesServiceImpl implements SalesService {
 
     private final WebClient client;
@@ -128,8 +130,8 @@ public class SalesServiceImpl implements SalesService {
                 .bodyValue(event)
                 .retrieve()
                 .toBodilessEntity()
-                .doOnSuccess(r -> System.out.println("VIEW notificou Core venda carId=" + sale.getCarId()))
-                .doOnError(e -> System.err.println("Erro ao notificar Core: " + e.getMessage()))
+                .doOnSuccess(r ->log.info("VIEW notificou Core venda carId={}", sale.getCarId()))
+                .doOnError(e ->log.error("Erro ao notificar Core: {}", e.getMessage()))
                 .block(); // ✅ melhor que subscribe() aqui
     }
 
