@@ -101,6 +101,48 @@
 
 	<build>
 		<plugins>
+
+					<!-- 1) Executa testes unitários (target/surefire-reports) -->
+					<plugin>
+						<groupId>org.apache.maven.plugins</groupId>
+						<artifactId>maven-surefire-plugin</artifactId>
+						<version>3.5.2</version>
+						<configuration>
+							<useModulePath>false</useModulePath>
+						</configuration>
+					</plugin>
+
+					<!-- 2) Gera cobertura JaCoCo e relatório XML (target/site/jacoco/jacoco.xml) -->
+					<plugin>
+						<groupId>org.jacoco</groupId>
+						<artifactId>jacoco-maven-plugin</artifactId>
+						<version>0.8.12</version>
+						<executions>
+							<!-- injeta o agent antes dos testes -->
+							<execution>
+								<id>prepare-agent</id>
+								<goals>
+									<goal>prepare-agent</goal>
+								</goals>
+							</execution>
+
+							<!-- gera relatórios no verify (inclui XML que o Sonar usa) -->
+							<execution>
+								<id>report</id>
+								<phase>verify</phase>
+								<goals>
+									<goal>report</goal>
+								</goals>
+								<configuration>
+									<formats>
+										<format>XML</format>
+										<format>HTML</format>
+									</formats>
+								</configuration>
+							</execution>
+						</executions>
+					</plugin>
+
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-compiler-plugin</artifactId>
