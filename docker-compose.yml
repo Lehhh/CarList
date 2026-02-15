@@ -1,13 +1,14 @@
 services:
   postgres_view:
-    image: postgres:16
+    image: postgres:12-alpine
     container_name: carstore_postgres_view
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-carstore_view}
       POSTGRES_USER: ${POSTGRES_USER:-view_user}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-view_pass}
+      PGPORT: ${DB_PORT_INTERNAL:-5433}
     ports:
-      - "${DB_PORT_EXTERNAL:-5433}:5432"
+      - "${DB_PORT_EXTERNAL:-5433}:5433"
     volumes:
       - pg_view_data:/var/lib/postgresql/data
     healthcheck:
@@ -15,8 +16,10 @@ services:
       interval: 5s
       timeout: 3s
       retries: 20
+    networks:
+      - carstore_net
 
-  carstore_view_app:
+  carstore-view-app:
     build:
       context: .
       dockerfile: Dockerfile
@@ -30,12 +33,12 @@ services:
       SERVER_PORT: ${SERVER_PORT:-8081}
 
       # DB (atenção: host é o nome do service do postgres no compose)
-      DB_URL: ${DB_URL:-jdbc:postgresql://postgres_view:5432/carstore_view}
+      DB_URL: ${DB_URL:-jdbc:postgresql://postgres_view:5433/carstore_view}
       DB_USER: ${DB_USER:-view_user}
       DB_PASS: ${DB_PASS:-view_pass}
 
       # Integração com Core
-      CORE_BASE_URL: ${CORE_BASE_URL:-http://host.docker.internal:8080}
+      CORE_BASE_URL: ${CORE_BASE_URL:-http://car-backend:8080}
 
       # JWT public key (se você montar o arquivo no container)
       JWT_PUBLIC_KEY_PATH: ${JWT_PUBLIC_KEY_PATH:-/app/keys/public_key.pem}
@@ -46,6 +49,12 @@ services:
     volumes:
       # monte a pasta keys (coloque public_key.pem dentro)
       - ./keys:/app/keys:ro
+    networks:
+      - carstore_net
 
 volumes:
   pg_view_data:
+networks:
+  carstore_net:
+    external: true
+    name: carstore_net

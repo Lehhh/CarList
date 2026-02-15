@@ -13,6 +13,7 @@ import lombok.extern.log4j.Log4j2;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.reactive.function.client.WebClient;
+import reactor.core.publisher.Mono;
 
 import java.time.Instant;
 import java.util.List;
@@ -87,6 +88,8 @@ public class SalesServiceImpl implements SalesService {
 
         Sale sale = saleRepo.findByPaymentCode(req.paymentCode())
                 .orElseThrow(() -> new IllegalArgumentException("paymentCode não encontrado"));
+        Car car = carRepo.findById(sale.getCarId())
+                .orElseThrow(() -> new IllegalArgumentException("Car não encontrado no serviço de venda"));
 
         // idempotência
         if (sale.getStatus() == Sale.Status.PAID && "PAID".equals(st)) return;
@@ -101,7 +104,7 @@ public class SalesServiceImpl implements SalesService {
             saleRepo.save(sale);
 
             // ✅ notifica Core (fake)
-            notifyCoreCarSold(sale);
+            notifyCoreCarSold(sale).subscribe();
 
             return;
         }
@@ -110,6 +113,8 @@ public class SalesServiceImpl implements SalesService {
             sale.setStatus(Sale.Status.CANCELED);
             sale.setReservedUntil(null);
 
+            car.setSold(false);
+            carRepo.save(car);
             saleRepo.save(sale);
             return;
         }
@@ -117,22 +122,21 @@ public class SalesServiceImpl implements SalesService {
         throw new IllegalArgumentException("status inválido (use PAID ou CANCELED)");
     }
 
-    private void notifyCoreCarSold(Sale sale) {
+    private Mono<Void> notifyCoreCarSold(Sale sale) {
         CarSoldEvent event = new CarSoldEvent(
-                sale.getCarId(),
-                sale.getBuyerCpf(),
-                sale.getSoldAt(),
-                sale.getPaymentCode()
+                sale.getCarId(), sale.getBuyerCpf(), sale.getSoldAt(), sale.getPaymentCode()
         );
-
-        client.post()
+        System.out.println("VIEW vai notificar Core venda do carro " + sale.getCarId() + " -> " + event);
+        return client.post()
                 .uri("/internal/cars/{carId}/sold", sale.getCarId())
                 .bodyValue(event)
                 .retrieve()
                 .toBodilessEntity()
-                .doOnSuccess(r ->log.info("VIEW notificou Core venda carId={}", sale.getCarId()))
-                .doOnError(e ->log.error("Erro ao notificar Core: {}", e.getMessage()))
-                .block(); // ✅ melhor que subscribe() aqui
+                .doOnSuccess(r -> log.info("VIEW notificou Core venda carId={}", sale.getCarId()))
+                .doOnError(r -> log.error("VIEW falhou ao notificar Core venda carId={}: {}", sale.getCarId(), r.getMessage()))
+                .then();
+
     }
+
 
 }

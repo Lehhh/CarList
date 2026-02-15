@@ -46,6 +46,7 @@ public class Car {
         this.color = color;
         this.price = price;
         this.sold = false;
+        this.updatedAt = Instant.now();
     }
 
     public void update(String brand, String model, Integer year, String color, BigDecimal price) {
@@ -57,6 +58,8 @@ public class Car {
         this.year = year;
         this.color = color;
         this.price = price;
+        this.updatedAt = Instant.now();
+
     }
 
     public void markAsSold() {

@@ -8,6 +8,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Instant;
+
 @Service
 @RequiredArgsConstructor
 public class CarSyncServiceImpl implements CarSyncService {
@@ -27,6 +29,8 @@ public class CarSyncServiceImpl implements CarSyncService {
         car.setYear(req.year());
         car.setColor(req.color());
         car.setPrice(req.price());
+        car.setUpdatedAt(Instant.now());
+
 
         carRepo.save(car);
     }
