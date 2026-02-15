@@ -66,7 +66,7 @@ jobs:
       - name: Build image
         run: |
           IMAGE_TAG=${GITHUB_SHA}
-          IMAGE_URI=${{ steps.ecr.outputs.registry }}/${ECR_REPOSITORY}:${IMAGE_TAG}
+          IMAGE_URI=${EC2_ECR_REGISTRY}
           echo "IMAGE_URI=$IMAGE_URI" >> $GITHUB_ENV
           docker build -t "$IMAGE_URI" .
 
