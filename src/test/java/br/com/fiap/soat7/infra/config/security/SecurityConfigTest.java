@@ -3,6 +3,8 @@ package br.com.fiap.soat7.infra.config.security;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.config.web.server.ServerHttpSecurity;
+import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.security.oauth2.jwt.ReactiveJwtDecoder;
 import org.springframework.security.web.server.SecurityWebFilterChain;
 import org.springframework.security.web.server.WebFilterChainProxy;
 import org.springframework.test.web.reactive.server.WebTestClient;
@@ -10,6 +12,11 @@ import org.springframework.web.reactive.function.server.RouterFunction;
 import org.springframework.web.reactive.function.server.RouterFunctions;
 import org.springframework.web.reactive.function.server.ServerResponse;
 import org.springframework.web.server.WebHandler;
+import reactor.core.publisher.Mono;
+
+import java.time.Instant;
+import java.util.List;
+import java.util.Map;
 
 class SecurityConfigTest {
 
@@ -25,12 +32,22 @@ class SecurityConfigTest {
 
         WebHandler webHandler = RouterFunctions.toWebHandler(routes);
 
+        // ✅ JwtDecoder fake: evita "jwtDecoder cannot be null"
+        ReactiveJwtDecoder fakeDecoder = token ->
+                Mono.just(new Jwt(
+                        token,
+                        Instant.now(),
+                        Instant.now().plusSeconds(3600),
+                        Map.of("alg", "none"),
+                        Map.of("sub", "user-1", "roles", List.of("ROLE_USER"))
+                ));
+
         SecurityWebFilterChain chain =
-                new SecurityConfig().filterChain(ServerHttpSecurity.http());
+                new TestSecurityConfig(fakeDecoder).filterChain(ServerHttpSecurity.http());
 
         WebTestClient client = WebTestClient
                 .bindToWebHandler(webHandler)
-                .webFilter(new WebFilterChainProxy(chain)) // aplica segurança como WebFilter
+                .webFilter(new WebFilterChainProxy(chain)) // aplica segurança como WebFilter (reactive)
                 .build();
 
         // permitAll
@@ -38,8 +55,48 @@ class SecurityConfigTest {
         client.get().uri("/swagger-ui/index.html").exchange().expectStatus().isOk();
         client.get().uri("/api/1/sales/webhook/test").exchange().expectStatus().isOk();
 
-        // authenticated
+        // authenticated (sem token)
         client.get().uri("/api/1/sales/available").exchange()
                 .expectStatus().isEqualTo(HttpStatus.UNAUTHORIZED);
+
+        // authenticated (com token Bearer)
+        client.get().uri("/api/1/sales/available")
+                .header("Authorization", "Bearer test-token")
+                .exchange()
+                .expectStatus().isOk();
+    }
+
+    /**
+     * Subclasse só para o teste: injeta o jwtDecoder fake sem alterar produção.
+     */
+    static class TestSecurityConfig extends SecurityConfig {
+
+        private final ReactiveJwtDecoder decoder;
+
+        TestSecurityConfig(ReactiveJwtDecoder decoder) {
+            this.decoder = decoder;
+        }
+
+        @Override
+        public SecurityWebFilterChain filterChain(ServerHttpSecurity http) {
+            return http
+                    .csrf(ServerHttpSecurity.CsrfSpec::disable)
+                    .authorizeExchange(ex -> ex
+                            .pathMatchers("/api/1/sales/webhook/**",
+                                    "/v3/api-docs/**",
+                                    "/swagger-ui/**",
+                                    "/swagger-ui.html").permitAll()
+                            .anyExchange().authenticated()
+                    )
+                    .httpBasic(ServerHttpSecurity.HttpBasicSpec::disable)
+                    .formLogin(ServerHttpSecurity.FormLoginSpec::disable)
+                    .oauth2ResourceServer(oauth -> oauth
+                            .jwt(jwt -> jwt
+                                    .jwtDecoder(decoder) // ✅ aqui está o fix
+                                    .jwtAuthenticationConverter(reactiveJwtAuthConverter())
+                            )
+                    )
+                    .build();
+        }
     }
 }
