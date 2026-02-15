@@ -23,6 +23,7 @@
 		<!-- SonarCloud: caminhos dos relatórios -->
 		<sonar.coverage.jacoco.xmlReportPaths>target/site/jacoco/jacoco.xml</sonar.coverage.jacoco.xmlReportPaths>
 		<sonar.junit.reportPaths>target/surefire-reports</sonar.junit.reportPaths>
+		<sonar.organization>lehhh</sonar.organization>
 	</properties>
 
 	<dependencies>
