@@ -30,6 +30,7 @@ public class CarSyncServiceImpl implements CarSyncService {
         car.setColor(req.color());
         car.setPrice(req.price());
         car.setUpdatedAt(Instant.now());
+        car.setSold(false);
 
 
         carRepo.save(car);
