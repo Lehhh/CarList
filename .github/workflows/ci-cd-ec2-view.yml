@@ -119,5 +119,5 @@ jobs:
               | docker login --username AWS --password-stdin "$ECR_REGISTRY"
   
             docker compose --env-file .env pull
-            docker compose --env-file .env up -d
+            docker compose --env-file .env up -d --no-build
             docker image prune -f
