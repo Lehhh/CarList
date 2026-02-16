@@ -20,9 +20,8 @@ services:
       - carstore_net
 
   carstore-view-app:
-    build:
-      image: ${APP_IMAGE}
-      pull_policy: always
+    image: ${APP_IMAGE}
+    pull_policy: always
     container_name: carstore_view_app
     depends_on:
       postgres_view:
