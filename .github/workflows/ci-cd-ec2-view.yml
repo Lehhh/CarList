@@ -37,7 +37,7 @@ jobs:
       - name: Build and analyze
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-        run: mvn -B verify org.sonarsource.scanner.maven:sonar-maven-plugin:sonar -Dsonar.projectKey=lehhh_Lehhh_CarCore
+        run: mvn -B verify org.sonarsource.scanner.maven:sonar-maven-plugin:sonar -Dsonar.projectKey=Lehhh_CarList
 
   build_and_push:
     name: Build & Push Docker (ECR)
@@ -45,7 +45,7 @@ jobs:
     needs: [test_and_sonar]
     env:
       AWS_REGION: ${{ secrets.AWS_REGION }}
-      ECR_REPOSITORY: ${{ secrets.ECR_REPOSITORY }}
+      ECR_REPOSITORY: ${{ secrets.ECR_REPOSITORY }} # ex: carstoreview
     outputs:
       image_uri: ${{ steps.meta.outputs.image_uri }}
     steps:
@@ -63,19 +63,29 @@ jobs:
         id: ecr
         uses: aws-actions/amazon-ecr-login@v2
 
-      - name: Build image
+      - name: Build, tag and push
+        id: build_push
+        env:
+          ECR_REGISTRY: ${{ steps.ecr.outputs.registry }}
         run: |
-          IMAGE_TAG=${GITHUB_SHA}
-          IMAGE_URI=${EC2_ECR_REGISTRY}
-          echo "IMAGE_URI=$IMAGE_URI" >> $GITHUB_ENV
-          docker build -t "$IMAGE_URI" .
+          set -euo pipefail
 
-      - name: Push image
-        run: docker push "$IMAGE_URI"
+          IMAGE_TAG="${GITHUB_SHA}"
+          IMAGE_URI="${ECR_REGISTRY}/${ECR_REPOSITORY}:${IMAGE_TAG}"
+          LATEST_URI="${ECR_REGISTRY}/${ECR_REPOSITORY}:latest"
+
+          echo "IMAGE_URI=$IMAGE_URI" >> $GITHUB_ENV
+
+          docker build -t "$IMAGE_URI" .
+          docker tag "$IMAGE_URI" "$LATEST_URI"
+
+          docker push "$IMAGE_URI"
+          docker push "$LATEST_URI"
 
       - name: Export image uri
         id: meta
-        run: echo "image_uri=${IMAGE_URI}" >> "$GITHUB_OUTPUT"
+        run: |
+          echo "image_uri=${IMAGE_URI}" >> "$GITHUB_OUTPUT"
 
   deploy:
     name: Deploy EC2
