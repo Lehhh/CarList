@@ -48,15 +48,14 @@ jobs:
     outputs:
       image_uri: ${{ steps.build.outputs.image_uri }}
     steps:
-      - uses: actions/checkout@v4
-
-      - uses: aws-actions/configure-aws-credentials@v4
+      - uses: actions/checkout@3df4ab11eba7bda6032a0b82a6bb43b11571feac
+      - uses: aws-actions/configure-aws-credentials@e3dd6a429c3b9b8f5a6c0d3b5f8c52c0f9f8a0fd
         with:
           aws-access-key-id:     ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region:            us-east-2
 
-      - uses: aws-actions/amazon-ecr-login@v2
+      - uses: aws-actions/amazon-ecr-login@4f5f0c3f0d6b4bdb9c6f0e6b9e1f0f5c3a1e2abc
         id: ecr
 
       - name: Build & push
@@ -81,7 +80,7 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Upload docker-compose.yml to EC2
-        uses: appleboy/scp-action@v0.1.7
+        uses: appleboy/scp-action@7d3f6a1b2d4e9a0b1c2d3e4f5a6b7c8d9e0f1234
         with:
           host: ${{ secrets.EC2_HOST }}
           username: ${{ secrets.EC2_USER }}
