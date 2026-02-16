@@ -16,6 +16,6 @@ public interface SaleRepository extends JpaRepository<Sale, Long> {
     Optional<Sale> findByPaymentCode(String paymentCode);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
-    @Query("select s from Sale s where s.id = :carId")
+    @Query("select s from Sale s where s.carId = :carId")
     Optional<Sale> lockByCarId(@Param("carId") Long carId);
 }
