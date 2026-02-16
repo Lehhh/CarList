@@ -75,50 +75,49 @@ jobs:
     runs-on: ubuntu-latest
     needs: [build_and_push]
     steps:
-      - name: Deploy via SSH (docker compose pull/up)
+      - uses: actions/checkout@v4
+
+      - name: Upload docker-compose.yml to EC2
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          key: ${{ secrets.EC2_SSH_PRIVATE_KEY }}
+          source: "docker-compose.yml"
+          target: ${{ secrets.EC2_APP_DIR }}
+
+      - name: Deploy via SSH
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.EC2_HOST }}
           username: ${{ secrets.EC2_USER }}
           key: ${{ secrets.EC2_SSH_PRIVATE_KEY }}
+          script_stop: true
           script: |
             set -euo pipefail
-
             APP_DIR="${{ secrets.EC2_APP_DIR }}"
-            mkdir -p "$APP_DIR"
             cd "$APP_DIR"
-
-            # Gera/atualiza .env para o docker compose do CarStoreView
+  
             cat > .env <<EOF
             APP_IMAGE=${{ needs.build_and_push.outputs.image_uri }}
-
-            # --- App ---
             SERVER_PORT=${{ secrets.SERVER_PORT }}
-
-            # --- DB (bate com application.yml) ---
             DB_URL=${{ secrets.DB_URL }}
             DB_USER=${{ secrets.DB_USER }}
             DB_PASS=${{ secrets.DB_PASS }}
-
-            # --- Flyway/JPA ---
             FLYWAY_ENABLED=${{ secrets.FLYWAY_ENABLED }}
             JPA_DDL_AUTO=${{ secrets.JPA_DDL_AUTO }}
-
-            # --- Integração (View -> Core) ---
             CORE_BASE_URL=${{ secrets.CORE_BASE_URL }}
-
-            # --- JWT (validação) ---
             JWT_PUBLIC_KEY_PATH=${{ secrets.JWT_PUBLIC_KEY_PATH }}
-
-            # --- Compose infra (opcional, se seu compose usar) ---
             DB_PORT_PUBLISHED=${{ secrets.DB_PORT_PUBLISHED }}
             APP_PORT_PUBLISHED=${{ secrets.APP_PORT_PUBLISHED }}
             EOF
-
-            # Login no ECR (para pull da imagem)
-            aws ecr get-login-password --region "${{ secrets.AWS_REGION }}"               | docker login --username AWS --password-stdin "${{ secrets.EC2_ECR_REGISTRY }}"
-
+  
+            APP_IMAGE="${{ needs.build_and_push.outputs.image_uri }}"
+            ECR_REGISTRY="$(echo "$APP_IMAGE" | cut -d/ -f1)"
+  
+            aws ecr get-login-password --region "us-east-2" \
+              | docker login --username AWS --password-stdin "$ECR_REGISTRY"
+  
             docker compose --env-file .env pull
             docker compose --env-file .env up -d
-
             docker image prune -f
