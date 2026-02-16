@@ -114,6 +114,8 @@ jobs:
   
             APP_IMAGE="${{ needs.build_and_push.outputs.image_uri }}"
             ECR_REGISTRY="$(echo "$APP_IMAGE" | cut -d/ -f1)"
+            
+            docker network inspect carstore_net >/dev/null 2>&1 || docker network create carstore_net
   
             aws ecr get-login-password --region "us-east-2" \
               | docker login --username AWS --password-stdin "$ECR_REGISTRY"
