@@ -10,6 +10,8 @@ Este repositório contém o **CarStoreView**, o microsserviço dedicado ao **flu
 >
 > O **cadastro/edição de veículos** e a **gestão de usuários/roles** ficam no **Core Service** (outro repositório), com banco segregado.
 
+![Scheme View Services](readme-images/diagram1-viewcar.png)
+
 ---
 
 ## 📦 FASE 4 — Contexto do Projeto
@@ -30,6 +32,9 @@ usecase   → Regras de negócio
 data      → DTOs e persistência
 infra     → Configurações (DB, segurança, clientes HTTP)
 ```
+
+![Clean Arch](readme-images/diagram2-view.png)
+
 
 ### 📐 Diagrama (Clean Architecture)
 
@@ -68,6 +73,8 @@ view -> core : HTTP REST
 (notifica/consulta Core)
 @enduml
 ```
+![Arch services](readme-images/diagram-core-3.png)
+
 
 ---
 
