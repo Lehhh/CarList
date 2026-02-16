@@ -10,6 +10,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.security.KeyFactory;
+import java.security.PublicKey;
 import java.security.interfaces.RSAPublicKey;
 import java.security.spec.X509EncodedKeySpec;
 import java.util.Base64;
@@ -22,35 +23,25 @@ public class RsaPubKeyLoader {
 
     @Bean
     public ReactiveJwtDecoder reactiveJwtDecoder() throws Exception {
-        RSAPublicKey publicKey = resolvePublicKey(publicKeyValue);
+        RSAPublicKey publicKey = loadPublicKeyFromBase64Env(publicKeyValue);
         return NimbusReactiveJwtDecoder.withPublicKey(publicKey).build();
     }
 
-    static RSAPublicKey resolvePublicKey(String value) throws Exception {
-        String trimmed = value == null ? "" : value.trim();
 
-        // se vier PEM direto (GitHub secret/env), usa como conteúdo
-        if (trimmed.startsWith("-----BEGIN")) {
-            return loadPublicKeyFromPem(trimmed);
-        }
-
-        // senão assume path
-        return loadPublicKeyFromPath(Path.of(trimmed));
+    public static RSAPublicKey loadPublicKeyFromBase64Env(String base64Env) throws Exception {
+        String pem = new String(Base64.getDecoder().decode(base64Env));
+        return loadPublicKeyX509FromPem(pem);
     }
 
-    public static RSAPublicKey loadPublicKeyFromPath(Path pemPath) throws Exception {
-        String pem = Files.readString(pemPath, StandardCharsets.UTF_8);
-        return loadPublicKeyFromPem(pem);
-    }
-
-    public static RSAPublicKey loadPublicKeyFromPem(String pem) throws Exception {
-        String cleaned = pem
+    private static RSAPublicKey loadPublicKeyX509FromPem(String pem) throws Exception {
+        String content = pem
                 .replace("-----BEGIN PUBLIC KEY-----", "")
                 .replace("-----END PUBLIC KEY-----", "")
                 .replaceAll("\\s", "");
 
-        byte[] der = Base64.getDecoder().decode(cleaned);
-        X509EncodedKeySpec spec = new X509EncodedKeySpec(der);
-        return (RSAPublicKey) KeyFactory.getInstance("RSA").generatePublic(spec);
+        byte[] decoded = Base64.getDecoder().decode(content);
+        X509EncodedKeySpec spec = new X509EncodedKeySpec(decoded);
+        PublicKey pub = KeyFactory.getInstance("RSA").generatePublic(spec);
+        return (RSAPublicKey) pub;
     }
 }
