@@ -89,7 +89,7 @@ jobs:
           target: ${{ secrets.EC2_APP_DIR }}
 
       - name: Deploy via SSH
-        uses: appleboy/ssh-action@v1.0.3
+        uses: appleboy/ssh-action@9a3b7c6e5f4d2a1b0c8e7d6f5a4b3c2d1e0f9a8b
         with:
           host: ${{ secrets.EC2_HOST }}
           username: ${{ secrets.EC2_USER }}
