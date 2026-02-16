@@ -36,12 +36,21 @@ public class SalesServiceImpl implements SalesService {
 
     @Override
     public List<Car> listSold() {
-        return carRepo.findBySoldIsTrueOrderByPriceAsc();
+        //aqui preciso listar as vendas e tirar os que estao reservados, ou seja, tem uma venda com status reservado
+        List<Long> carReserved = saleRepo.findByStatusOrderByLockedPriceAsc(Sale.Status.RESERVED).stream().map(Sale::getCarId).toList();
+        return carRepo.findBySoldIsTrueOrderByPriceAsc().stream().filter(c-> !carReserved.contains(c.getId())).toList();
+    }
+
+    @Override
+    public List<Car> listReserved() {
+        //aqui preciso listar as vendas e tirar os que estao reservados, ou seja, tem uma venda com status reservado
+        List<Long> carReserved = saleRepo.findByStatusOrderByLockedPriceAsc(Sale.Status.RESERVED).stream().map(Sale::getCarId).toList();
+        return carRepo.findBySoldIsTrueOrderByPriceAsc().stream().filter(c-> carReserved.contains(c.getId())).toList();
     }
 
     @Override
     @Transactional
-    public PurchaseResponse purchase(Long carId) {
+    public PurchaseResponse reserved(Long carId) {
         Car car = carRepo.findById(carId)
                 .orElseThrow(() -> new IllegalArgumentException("Car não encontrado no serviço de venda"));
 
@@ -73,6 +82,7 @@ public class SalesServiceImpl implements SalesService {
         sale.setPaymentCode(UUID.randomUUID().toString());
 
         Sale saved = saleRepo.save(sale);
+
         car.setSold(true);
         carRepo.save(car);
 
@@ -103,9 +113,7 @@ public class SalesServiceImpl implements SalesService {
             sale.setBuyerCpf(req.buyerCpf());
             sale.setSoldAt(req.eventAt() != null ? req.eventAt() : Instant.now());
             sale.setReservedUntil(null);
-
             saleRepo.save(sale);
-
             notifyCoreCarSold(sale).subscribe();
 
             return;

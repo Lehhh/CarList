@@ -1,7 +1,6 @@
 package br.com.fiap.soat7.adapter.controller;
 
 import br.com.fiap.soat7.data.domain.Car;
-import br.com.fiap.soat7.data.domain.Sale;
 import br.com.fiap.soat7.data.domain.dto.PaymentWebhookRequest;
 import br.com.fiap.soat7.data.domain.dto.PurchaseRequest;
 import br.com.fiap.soat7.data.domain.dto.PurchaseResponse;
@@ -26,6 +25,24 @@ class SalesControllerTest {
 
     @InjectMocks
     SalesController controller;
+
+    @Test
+    void listReserved_deveRetornar200ELista() throws Exception {
+        Car c1 = new Car();
+        c1.setId(1L);
+
+        Car c2 = new Car();
+        c2.setId(2L);
+
+        when(salesService.listReserved()).thenReturn(List.of(c1, c2));
+
+        ResponseEntity<List<Car>> resp = controller.listReserved();
+        verify(salesService, times(1)).listReserved();
+        verifyNoMoreInteractions(salesService);
+        assertThat(resp.getStatusCode().value()).isEqualTo(200);
+        assertThat(resp.getBody()).hasSize(2);
+
+    }
 
     @Test
     void listAvailable_deveRetornar200ComListaDoService() {
@@ -65,20 +82,20 @@ class SalesControllerTest {
     }
 
     @Test
-    void purchase_deveChamarServiceComCarIdEDepvolver200() {
+    void reserved_deveChamarServiceComCarIdEDepvolver200() {
         // arrange
         PurchaseRequest req = mock(PurchaseRequest.class);
         when(req.carId()).thenReturn(55L);
 
         PurchaseResponse expected = mock(PurchaseResponse.class);
-        when(salesService.purchase(55L)).thenReturn(expected);
+        when(salesService.reserved(55L)).thenReturn(expected);
 
         // act
-        ResponseEntity<PurchaseResponse> resp = controller.purchase(req);
+        ResponseEntity<PurchaseResponse> resp = controller.reserved(req);
 
         // assert
         verify(req, times(1)).carId();
-        verify(salesService, times(1)).purchase(55L);
+        verify(salesService, times(1)).reserved(55L);
         verifyNoMoreInteractions(salesService);
 
         assertThat(resp.getStatusCode().value()).isEqualTo(200);

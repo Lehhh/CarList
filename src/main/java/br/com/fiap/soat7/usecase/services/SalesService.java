@@ -1,7 +1,6 @@
 package br.com.fiap.soat7.usecase.services;
 
 import br.com.fiap.soat7.data.domain.Car;
-import br.com.fiap.soat7.data.domain.Sale;
 import br.com.fiap.soat7.data.domain.dto.PaymentWebhookRequest;
 import br.com.fiap.soat7.data.domain.dto.PurchaseResponse;
 
@@ -11,6 +10,7 @@ public interface SalesService {
 
     List<Car> listAvailable();
     List<Car> listSold();
-    PurchaseResponse purchase(Long carId);
+    List<Car> listReserved();
+    PurchaseResponse reserved(Long carId);
     void handlePaymentWebhook(PaymentWebhookRequest req);
 }

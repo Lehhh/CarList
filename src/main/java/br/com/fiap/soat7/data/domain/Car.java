@@ -33,7 +33,6 @@ public class Car {
     @Column(nullable = false, precision = 15, scale = 2)
     private BigDecimal price;
 
-    @Column(nullable = false)
     private boolean sold;
 
     @Column(nullable = false)

@@ -58,7 +58,7 @@ class SalesServiceImplTest {
 
     @Test
     void listAvailable_deveDelegarRepo() {
-        List<Car> expected = List.of(new Car());
+        List<Car> expected = List.of(new Car(), new Car());
         when(carRepo.findBySoldIsFalseOrderByPriceAsc()).thenReturn(expected);
 
         List<Car> actual = service.listAvailable();
@@ -70,16 +70,54 @@ class SalesServiceImplTest {
     }
 
     @Test
-    void listSold_deveDelegarRepo() {
-        List<Car> expected = List.of(new Car());
-        when(carRepo.findBySoldIsTrueOrderByPriceAsc()).thenReturn(expected);
+    void listSold_deveRemoverCarrosQueEstaoReservados() {
+        // cars sold = true
+        Car c1 = new Car(); c1.setId(1L);
+        Car c2 = new Car(); c2.setId(2L);
+        Car c3 = new Car(); c3.setId(3L);
+
+        when(carRepo.findBySoldIsTrueOrderByPriceAsc()).thenReturn(List.of(c1, c2, c3));
+
+        // reserved sales -> carId 2 e 99 (99 não existe na lista)
+        Sale s1 = new Sale(); s1.setCarId(2L); s1.setStatus(Sale.Status.RESERVED);
+        Sale s2 = new Sale(); s2.setCarId(99L); s2.setStatus(Sale.Status.RESERVED);
+
+        when(saleRepo.findByStatusOrderByLockedPriceAsc(Sale.Status.RESERVED))
+                .thenReturn(List.of(s1, s2));
 
         List<Car> actual = service.listSold();
 
-        assertSame(expected, actual);
+        // deve excluir o carro 2 (reservado) e manter 1 e 3
+        assertEquals(List.of(1L, 3L), actual.stream().map(Car::getId).toList());
+
+        verify(saleRepo).findByStatusOrderByLockedPriceAsc(Sale.Status.RESERVED);
         verify(carRepo).findBySoldIsTrueOrderByPriceAsc();
-        verifyNoMoreInteractions(carRepo);
-        verifyNoInteractions(saleRepo, client);
+        verifyNoMoreInteractions(carRepo, saleRepo);
+        verifyNoInteractions(client);
+    }
+
+    @Test
+    void listReserved_deveRetornarApenasCarrosQueEstaoReservados() {
+        Car c1 = new Car(); c1.setId(1L);
+        Car c2 = new Car(); c2.setId(2L);
+        Car c3 = new Car(); c3.setId(3L);
+
+        when(carRepo.findBySoldIsTrueOrderByPriceAsc()).thenReturn(List.of(c1, c2, c3));
+
+        Sale s1 = new Sale(); s1.setCarId(2L); s1.setStatus(Sale.Status.RESERVED);
+
+        when(saleRepo.findByStatusOrderByLockedPriceAsc(Sale.Status.RESERVED))
+                .thenReturn(List.of(s1));
+
+        List<Car> actual = service.listReserved();
+
+        // deve retornar só o 2
+        assertEquals(List.of(2L), actual.stream().map(Car::getId).toList());
+
+        verify(saleRepo).findByStatusOrderByLockedPriceAsc(Sale.Status.RESERVED);
+        verify(carRepo).findBySoldIsTrueOrderByPriceAsc();
+        verifyNoMoreInteractions(carRepo, saleRepo);
+        verifyNoInteractions(client);
     }
 
     // -----------------------------
@@ -87,10 +125,10 @@ class SalesServiceImplTest {
     // -----------------------------
 
     @Test
-    void purchase_quandoCarNaoExiste_deveLancarIllegalArgument() {
+    void reserved_quandoCarNaoExiste_deveLancarIllegalArgument() {
         when(carRepo.findById(1L)).thenReturn(Optional.empty());
 
-        var ex = assertThrows(IllegalArgumentException.class, () -> service.purchase(1L));
+        var ex = assertThrows(IllegalArgumentException.class, () -> service.reserved(1L));
         assertEquals("Car não encontrado no serviço de venda", ex.getMessage());
 
         verify(carRepo).findById(1L);
@@ -98,7 +136,7 @@ class SalesServiceImplTest {
     }
 
     @Test
-    void purchase_quandoSaleNaoExiste_criaReservaESalva() {
+    void reserved_quandoSaleNaoExiste_criaReservaESalva() {
         Car car = new Car();
         car.setPrice(new BigDecimal("12345.67"));
         when(carRepo.findById(10L)).thenReturn(Optional.of(car));
@@ -110,7 +148,7 @@ class SalesServiceImplTest {
             return s;
         });
 
-        PurchaseResponse resp = service.purchase(10L);
+        PurchaseResponse resp = service.reserved(10L);
 
         assertEquals(99L, resp.saleId());
         assertEquals(10L, resp.carId());
@@ -133,7 +171,7 @@ class SalesServiceImplTest {
     }
 
     @Test
-    void purchase_quandoSaleJaPago_lancaIllegalState() {
+    void reserved_quandoSaleJaPago_lancaIllegalState() {
         Car car = new Car();
         car.setPrice(new BigDecimal("10"));
         when(carRepo.findById(1L)).thenReturn(Optional.of(car));
@@ -143,7 +181,7 @@ class SalesServiceImplTest {
         sale.setStatus(Sale.Status.PAID);
         when(saleRepo.lockByCarId(1L)).thenReturn(Optional.of(sale));
 
-        var ex = assertThrows(IllegalStateException.class, () -> service.purchase(1L));
+        var ex = assertThrows(IllegalStateException.class, () -> service.reserved(1L));
         assertEquals("Car já foi vendido", ex.getMessage());
 
         verify(saleRepo, never()).save(any());
@@ -151,7 +189,7 @@ class SalesServiceImplTest {
     }
 
     @Test
-    void purchase_quandoSaleReservadoEValido_lancaIllegalState() {
+    void reserved_quandoSaleReservadoEValido_lancaIllegalState() {
         Car car = new Car();
         car.setPrice(new BigDecimal("10"));
         when(carRepo.findById(2L)).thenReturn(Optional.of(car));
@@ -162,7 +200,7 @@ class SalesServiceImplTest {
         sale.setReservedUntil(Instant.now().plusSeconds(60));
         when(saleRepo.lockByCarId(2L)).thenReturn(Optional.of(sale));
 
-        var ex = assertThrows(IllegalStateException.class, () -> service.purchase(2L));
+        var ex = assertThrows(IllegalStateException.class, () -> service.reserved(2L));
         assertEquals("Car já está reservado", ex.getMessage());
 
         verify(saleRepo, never()).save(any());
@@ -170,7 +208,7 @@ class SalesServiceImplTest {
     }
 
     @Test
-    void purchase_quandoSaleReservadoMasExpirado_reservaDeNovo() {
+    void reserved_quandoSaleReservadoMasExpirado_reservaDeNovo() {
         Car car = new Car();
         car.setPrice(new BigDecimal("10"));
         when(carRepo.findById(3L)).thenReturn(Optional.of(car));
@@ -185,7 +223,7 @@ class SalesServiceImplTest {
 
         when(saleRepo.save(any(Sale.class))).thenAnswer(inv -> inv.getArgument(0));
 
-        PurchaseResponse resp = service.purchase(3L);
+        PurchaseResponse resp = service.reserved(3L);
 
         assertEquals(7L, resp.saleId());
         assertEquals(3L, resp.carId());

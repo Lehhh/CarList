@@ -1,6 +1,5 @@
 package br.com.fiap.soat7.adapter.controller;
 import br.com.fiap.soat7.data.domain.Car;
-import br.com.fiap.soat7.data.domain.Sale;
 import br.com.fiap.soat7.data.domain.dto.PaymentWebhookRequest;
 import br.com.fiap.soat7.data.domain.dto.PurchaseRequest;
 import br.com.fiap.soat7.data.domain.dto.PurchaseResponse;
@@ -38,12 +37,17 @@ public class SalesController {
         return ResponseEntity.ok(salesService.listSold());
     }
 
+
+    @GetMapping("/reserved")
+    public ResponseEntity<List<Car>> listReserved() {
+        return ResponseEntity.ok(salesService.listReserved());
+    }
     /**
      * Inicia compra/reserva e gera paymentCode
      */
-    @PostMapping("/purchase")
-    public ResponseEntity<PurchaseResponse> purchase(@RequestBody PurchaseRequest req) {
-        return ResponseEntity.ok(salesService.purchase(req.carId()));
+    @PostMapping("/reserved")
+    public ResponseEntity<PurchaseResponse> reserved(@RequestBody PurchaseRequest req) {
+        return ResponseEntity.ok(salesService.reserved(req.carId()));
     }
 
     /**

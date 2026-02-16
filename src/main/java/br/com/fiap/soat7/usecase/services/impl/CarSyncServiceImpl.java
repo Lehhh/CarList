@@ -31,8 +31,6 @@ public class CarSyncServiceImpl implements CarSyncService {
         car.setPrice(req.price());
         car.setUpdatedAt(Instant.now());
         car.setSold(false);
-
-
         carRepo.save(car);
     }
 }
