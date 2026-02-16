@@ -43,49 +43,32 @@ jobs:
     name: Build & Push Docker (ECR)
     runs-on: ubuntu-latest
     needs: [test_and_sonar]
-    env:
-      AWS_REGION: ${{ secrets.AWS_REGION }}
-      ECR_REPOSITORY: ${{ secrets.ECR_REPOSITORY }} # ex: carstoreview
     outputs:
-      image_uri: ${{ steps.meta.outputs.image_uri }}
+      image_uri: ${{ steps.build.outputs.image_uri }}
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v4
+      - uses: aws-actions/configure-aws-credentials@v4
         with:
           aws-access-key-id:     ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region:            ${{ secrets.AWS_REGION }}
+          aws-region:            us-east-2
 
-      - name: Login ECR
+      - uses: aws-actions/amazon-ecr-login@v2
         id: ecr
-        uses: aws-actions/amazon-ecr-login@v2
 
-      - name: Build, tag and push
-        id: build_push
+      - name: Build & push
+        id: build
         env:
-          ECR_REGISTRY: ${{ steps.ecr.outputs.registry }}
+          REGISTRY: ${{ steps.ecr.outputs.registry }}
+          REPO: car-view
+          TAG: ${{ github.sha }}
         run: |
           set -euo pipefail
-
-          IMAGE_TAG="${GITHUB_SHA}"
-          IMAGE_URI="${ECR_REGISTRY}/${ECR_REPOSITORY}:${IMAGE_TAG}"
-          LATEST_URI="${ECR_REGISTRY}/${ECR_REPOSITORY}:latest"
-
-          echo "IMAGE_URI=$IMAGE_URI" >> $GITHUB_ENV
-
-          docker build -t "$IMAGE_URI" .
-          docker tag "$IMAGE_URI" "$LATEST_URI"
-
-          docker push "$IMAGE_URI"
-          docker push "$LATEST_URI"
-
-      - name: Export image uri
-        id: meta
-        run: |
+          IMAGE_URI="${REGISTRY}/${REPO}:${TAG}"
           echo "image_uri=${IMAGE_URI}" >> "$GITHUB_OUTPUT"
+          docker build -t "$IMAGE_URI" .
+          docker push "$IMAGE_URI"
 
   deploy:
     name: Deploy EC2
