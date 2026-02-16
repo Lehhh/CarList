@@ -4,6 +4,7 @@ on:
   push:
     branches: ["main"]
   pull_request:
+    branches: ["main", "master"]
 
 concurrency:
   group: deploy-main
@@ -40,6 +41,7 @@ jobs:
         run: mvn -B verify org.sonarsource.scanner.maven:sonar-maven-plugin:sonar -Dsonar.projectKey=lehhh_Lehhh_CarList
 
   build_and_push:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     name: Build & Push Docker (ECR)
     runs-on: ubuntu-latest
     needs: [test_and_sonar]
@@ -71,6 +73,7 @@ jobs:
           docker push "$IMAGE_URI"
 
   deploy:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     name: Deploy EC2
     runs-on: ubuntu-latest
     needs: [build_and_push]
