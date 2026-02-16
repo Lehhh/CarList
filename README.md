@@ -262,12 +262,11 @@ Ao iniciar a aplicação, é criado automaticamente um **usuário admin padrão*
 
 ## ✅ Evidências do Sonar / Cobertura
 
-> **Anexar aqui** (print/link) as evidências do SonarCloud, incluindo:
+![Sonarqube](readme-images/sonar-view.png)
 - Quality Gate
 - Cobertura total (>= 80%)
 - Execução dos testes no pipeline
 
-![Sonarqube](readme-images/sonar-view.png)
 
 
 
