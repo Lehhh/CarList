@@ -21,8 +21,8 @@ services:
 
   carstore-view-app:
     build:
-      context: .
-      dockerfile: Dockerfile
+      image: .
+      pull_policy: always
     container_name: carstore_view_app
     depends_on:
       postgres_view:
