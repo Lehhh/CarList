@@ -29,13 +29,14 @@ public class SalesServiceImpl implements SalesService {
     private final CarRepository carRepo;
 
     @Override
-    public List<Sale> listAvailable() {
-        return saleRepo.findByStatusOrderByLockedPriceAsc(Sale.Status.AVAILABLE);
+    public List<Car> listAvailable() {
+
+        return carRepo.findBySoldIsFalseOrderByPriceAsc();
     }
 
     @Override
-    public List<Sale> listSold() {
-        return saleRepo.findByStatusOrderByLockedPriceAsc(Sale.Status.PAID);
+    public List<Car> listSold() {
+        return carRepo.findBySoldIsTrueOrderByPriceAsc();
     }
 
     @Override
@@ -72,6 +73,8 @@ public class SalesServiceImpl implements SalesService {
         sale.setPaymentCode(UUID.randomUUID().toString());
 
         Sale saved = saleRepo.save(sale);
+        car.setSold(true);
+        carRepo.save(car);
 
         return new PurchaseResponse(
                 saved.getId(),
@@ -103,7 +106,6 @@ public class SalesServiceImpl implements SalesService {
 
             saleRepo.save(sale);
 
-            // ✅ notifica Core (fake)
             notifyCoreCarSold(sale).subscribe();
 
             return;

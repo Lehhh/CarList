@@ -58,28 +58,28 @@ class SalesServiceImplTest {
 
     @Test
     void listAvailable_deveDelegarRepo() {
-        List<Sale> expected = List.of(new Sale());
-        when(saleRepo.findByStatusOrderByLockedPriceAsc(Sale.Status.AVAILABLE)).thenReturn(expected);
+        List<Car> expected = List.of(new Car());
+        when(carRepo.findBySoldIsFalseOrderByPriceAsc()).thenReturn(expected);
 
-        List<Sale> actual = service.listAvailable();
+        List<Car> actual = service.listAvailable();
 
         assertSame(expected, actual);
-        verify(saleRepo).findByStatusOrderByLockedPriceAsc(Sale.Status.AVAILABLE);
-        verifyNoMoreInteractions(saleRepo);
-        verifyNoInteractions(carRepo, client);
+        verify(carRepo).findBySoldIsFalseOrderByPriceAsc();
+        verifyNoMoreInteractions(carRepo);
+        verifyNoInteractions(saleRepo, client);
     }
 
     @Test
     void listSold_deveDelegarRepo() {
-        List<Sale> expected = List.of(new Sale());
-        when(saleRepo.findByStatusOrderByLockedPriceAsc(Sale.Status.PAID)).thenReturn(expected);
+        List<Car> expected = List.of(new Car());
+        when(carRepo.findBySoldIsTrueOrderByPriceAsc()).thenReturn(expected);
 
-        List<Sale> actual = service.listSold();
+        List<Car> actual = service.listSold();
 
         assertSame(expected, actual);
-        verify(saleRepo).findByStatusOrderByLockedPriceAsc(Sale.Status.PAID);
-        verifyNoMoreInteractions(saleRepo);
-        verifyNoInteractions(carRepo, client);
+        verify(carRepo).findBySoldIsTrueOrderByPriceAsc();
+        verifyNoMoreInteractions(carRepo);
+        verifyNoInteractions(saleRepo, client);
     }
 
     // -----------------------------

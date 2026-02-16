@@ -1,4 +1,5 @@
 package br.com.fiap.soat7.adapter.controller;
+import br.com.fiap.soat7.data.domain.Car;
 import br.com.fiap.soat7.data.domain.Sale;
 import br.com.fiap.soat7.data.domain.dto.PaymentWebhookRequest;
 import br.com.fiap.soat7.data.domain.dto.PurchaseRequest;
@@ -25,7 +26,7 @@ public class SalesController {
      * Listagem de veículos à venda, ordenada por preço (asc)
      */
     @GetMapping("/available")
-    public ResponseEntity<List<Sale>> listAvailable() {
+    public ResponseEntity<List<Car>> listAvailable() {
         return ResponseEntity.ok(salesService.listAvailable());
     }
 
@@ -33,7 +34,7 @@ public class SalesController {
      * Listagem de veículos vendidos, ordenada por preço (asc)
      */
     @GetMapping("/sold")
-    public ResponseEntity<List<Sale>> listSold() {
+    public ResponseEntity<List<Car>> listSold() {
         return ResponseEntity.ok(salesService.listSold());
     }
 

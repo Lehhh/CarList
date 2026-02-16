@@ -1,5 +1,6 @@
 package br.com.fiap.soat7.adapter.controller;
 
+import br.com.fiap.soat7.data.domain.Car;
 import br.com.fiap.soat7.data.domain.Sale;
 import br.com.fiap.soat7.data.domain.dto.PaymentWebhookRequest;
 import br.com.fiap.soat7.data.domain.dto.PurchaseRequest;
@@ -29,14 +30,14 @@ class SalesControllerTest {
     @Test
     void listAvailable_deveRetornar200ComListaDoService() {
         // arrange
-        Sale s1 = mock(Sale.class);
-        Sale s2 = mock(Sale.class);
-        List<Sale> expected = List.of(s1, s2);
+        Car s1 = mock(Car.class);
+        Car s2 = mock(Car.class);
+        List<Car> expected = List.of(s1, s2);
 
         when(salesService.listAvailable()).thenReturn(expected);
 
         // act
-        ResponseEntity<List<Sale>> resp = controller.listAvailable();
+        ResponseEntity<List<Car>> resp = controller.listAvailable();
 
         // assert
         verify(salesService, times(1)).listAvailable();
@@ -49,11 +50,11 @@ class SalesControllerTest {
     @Test
     void listSold_deveRetornar200ComListaDoService() {
         // arrange
-        List<Sale> expected = List.of(mock(Sale.class));
+        List<Car> expected = List.of(mock(Car.class));
         when(salesService.listSold()).thenReturn(expected);
 
         // act
-        ResponseEntity<List<Sale>> resp = controller.listSold();
+        ResponseEntity<List<Car>> resp = controller.listSold();
 
         // assert
         verify(salesService, times(1)).listSold();
