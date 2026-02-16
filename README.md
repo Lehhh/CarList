@@ -267,6 +267,8 @@ Ao iniciar a aplicação, é criado automaticamente um **usuário admin padrão*
 - Cobertura total (>= 80%)
 - Execução dos testes no pipeline
 
+![Sonarqube](readme-images/sonar-view.png)
+
 
 
 ## 🧩 Diagrama de Caso de Uso (descrição)
