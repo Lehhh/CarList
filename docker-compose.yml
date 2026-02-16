@@ -35,6 +35,8 @@ services:
       DB_URL: ${DB_URL:-jdbc:postgresql://postgres_view:5433/carstore_view}
       DB_USER: ${DB_USER:-view_user}
       DB_PASS: ${DB_PASS:-view_pass}
+      JWT_PUBLIC_KEY: ${JWT_PUBLIC_KEY}
+      JWT_ISSUER: ${JWT_ISSUER}
 
       # Integração com Core
       CORE_BASE_URL: ${CORE_BASE_URL:-http://car-backend:8080}
