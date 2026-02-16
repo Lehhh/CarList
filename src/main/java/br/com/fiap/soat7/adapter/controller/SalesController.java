@@ -4,6 +4,7 @@ import br.com.fiap.soat7.data.domain.dto.PaymentWebhookRequest;
 import br.com.fiap.soat7.data.domain.dto.PurchaseRequest;
 import br.com.fiap.soat7.data.domain.dto.PurchaseResponse;
 import br.com.fiap.soat7.usecase.services.SalesService;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -11,6 +12,7 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/1/sales")
+@SecurityRequirement(name = "bearerAuth")
 public class SalesController {
 
     private final SalesService salesService;
