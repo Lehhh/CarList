@@ -110,6 +110,8 @@ jobs:
             JWT_PUBLIC_KEY_PATH=${{ secrets.JWT_PUBLIC_KEY_PATH }}
             DB_PORT_PUBLISHED=${{ secrets.DB_PORT_PUBLISHED }}
             APP_PORT_PUBLISHED=${{ secrets.APP_PORT_PUBLISHED }}
+            JWT_PRIVATE_KEY=${{ secrets.JWT_PRIVATE_KEY }}
+            JWT_PUBLIC_KEY=${{ secrets.JWT_PUBLIC_KEY }}
             EOF
   
             APP_IMAGE="${{ needs.build_and_push.outputs.image_uri }}"

@@ -30,10 +30,8 @@ class RsaPubKeyLoaderTest {
                 b64 + "\n" +
                 "-----END PUBLIC KEY-----\n";
 
-        Path pemPath = tempDir.resolve("pub.pem");
-        Files.writeString(pemPath, pem);
 
-        RSAPublicKey loaded = RsaPubKeyLoader.loadPublicKey(pemPath);
+        RSAPublicKey loaded = RsaPubKeyLoader.loadPublicKeyFromPem(pem);
 
         assertNotNull(loaded);
         assertEquals(original.getModulus(), loaded.getModulus());

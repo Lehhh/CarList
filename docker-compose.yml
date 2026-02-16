@@ -39,15 +39,9 @@ services:
       # Integração com Core
       CORE_BASE_URL: ${CORE_BASE_URL:-http://car-backend:8080}
 
-      # JWT public key (se você montar o arquivo no container)
-      JWT_PUBLIC_KEY_PATH: ${JWT_PUBLIC_KEY_PATH:-/app/keys/public_key.pem}
-
       # Flyway/JPA
       FLYWAY_ENABLED: ${FLYWAY_ENABLED:-true}
       JPA_DDL_AUTO: ${JPA_DDL_AUTO:-validate}
-    volumes:
-      # monte a pasta keys (coloque public_key.pem dentro)
-      - ./keys:/app/keys:ro
     networks:
       - carstore_net
 
