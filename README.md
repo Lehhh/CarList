@@ -108,10 +108,32 @@ export DB_PASS="view_pass"
 export FLYWAY_ENABLED=true
 export JPA_DDL_AUTO=validate
 export CORE_BASE_URL="http://localhost:8080"
-export JWT_PUBLIC_KEY_PATH="../CarStoreBack/keys/public_key.pem"
+export JWT_PUBLIC_KEY="<BASE64_DO_PEM_DA_CHAVE_PUBLICA_RSA>"
 ```
 
 ---
+
+
+## 🔐 Autenticação (JWT)
+
+> ✅ **Não existe mais a pasta `keys/` neste projeto.**
+
+O **CarStoreView** valida JWT usando uma **chave pública RSA** informada via variável de ambiente:
+
+- `JWT_PUBLIC_KEY`: **Base64** do conteúdo PEM da chave pública (`-----BEGIN PUBLIC KEY----- ...`).
+
+Exemplo (Linux/Mac) para gerar o Base64 do PEM:
+
+```bash
+base64 -w 0 public_key.pem
+```
+
+Depois exporte:
+
+```bash
+export JWT_PUBLIC_KEY="<COLE_AQUI_O_BASE64_DO_PEM>"
+```
+
 
 ## 📖 Swagger / OpenAPI
 
@@ -199,3 +221,85 @@ No contexto acadêmico, arquivos de chave usados apenas para desenvolvimento pod
 Leandro Shiniti Tacara  
 RM355388  
 Pós Tech FIAP — Turma SOAT7
+
+
+## ☁️ Requisitos para execução na AWS (EC2)
+
+Para executar e publicar via CI/CD (GitHub Actions) em uma instância EC2:
+
+- **Instância**: `t3.small`
+- **EC2 com IP público** (Elastic IP opcional, mas recomendado para estabilidade)
+- **Docker + Docker Compose** instalados na EC2
+- **Security Group** liberando:
+  - **SSH (22)** a partir do seu IP (administração)
+  - **Portas da aplicação** (ex.: `8080` no Core, `8081` no Sales)
+  - Permitir o deploy do **GitHub Actions** (via SSH) — recomenda-se restringir a origem aos **GitHub Actions IP ranges** ou usar **runner auto-hospedado** na própria VPC
+- **IAM Role** anexada à EC2 (mínimo necessário) para permitir operações usadas no deploy (ex.: pull de imagens no ECR, leitura de secrets/params, etc., conforme seu pipeline)
+
+
+
+## 🗃️ Banco de dados e migrações (Flyway)
+
+Este projeto utiliza **PostgreSQL** e possui **migrações Flyway** em `src/main/resources/db/migration`.
+Ao subir a aplicação, o Flyway executa as migrations automaticamente (por padrão).
+
+
+
+## 👤 Usuário admin padrão (para testes)
+
+Ao iniciar a aplicação, é criado automaticamente um **usuário admin padrão** para facilitar os testes ponta-a-ponta.
+
+> **Ajuste via variáveis de ambiente** (ver `application.yml` / `application.yaml`).
+
+
+
+## ✅ Evidências do Sonar / Cobertura
+
+> **Anexar aqui** (print/link) as evidências do SonarCloud, incluindo:
+- Quality Gate
+- Cobertura total (>= 80%)
+- Execução dos testes no pipeline
+
+
+
+## 🧩 Diagrama de Caso de Uso (descrição)
+
+A seguir está uma descrição textual para você montar o **Diagrama de Caso de Uso** (UML):
+
+### Atores
+- **Administrador**: usuário interno que cadastra e edita veículos e gerencia usuários.
+- **Cliente/Comprador**: usuário que realiza a compra (fluxo de venda).
+- **Gateway de Pagamento**: sistema externo que chama o webhook informando o status do pagamento.
+
+### Casos de uso (alto nível)
+1. **Cadastrar veículo para venda**
+   - Ator: Administrador
+   - Resultado: veículo cadastrado como disponível para venda.
+
+2. **Editar dados do veículo**
+   - Ator: Administrador
+   - Resultado: dados do veículo atualizados.
+
+3. **Efetuar venda (compra) de veículo**
+   - Ator: Cliente/Comprador
+   - Pré-condição: veículo está disponível
+   - Resultado: venda criada/registrada com CPF do comprador e data da venda.
+
+4. **Processar confirmação/cancelamento de pagamento (Webhook)**
+   - Ator: Gateway de Pagamento
+   - Entrada: código do pagamento + status (PAID/CANCELED)
+   - Resultado: venda atualiza o status (confirmada ou cancelada).
+
+5. **Listar veículos à venda (ordenado por preço)**
+   - Ator: Cliente/Comprador
+   - Resultado: lista ordenada do mais barato para o mais caro.
+
+6. **Listar veículos vendidos (ordenado por preço)**
+   - Ator: Administrador (ou usuário interno)
+   - Resultado: lista ordenada do mais barato para o mais caro.
+
+### Observação de arquitetura
+- O **fluxo de compra e listagens** fica isolado no **Sales Service (CarStoreView)** com **banco segregado**.
+- O **cadastro/edição** e demais funcionalidades ficam no **Core Service (CarStoreBack)**.
+- A comunicação entre os serviços acontece via **HTTP**.
+
