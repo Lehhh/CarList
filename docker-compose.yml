@@ -21,7 +21,7 @@ services:
 
   carstore-view-app:
     build:
-      image: .
+      image: ${APP_IMAGE}
       pull_policy: always
     container_name: carstore_view_app
     depends_on:
