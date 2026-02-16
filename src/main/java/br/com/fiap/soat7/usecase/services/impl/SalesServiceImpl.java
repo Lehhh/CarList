@@ -78,7 +78,7 @@ public class SalesServiceImpl implements SalesService {
 
         // reserva / inicia compra
         sale.setStatus(Sale.Status.RESERVED);
-        sale.setReservedUntil(Instant.now().plusSeconds(15 * 60));
+        sale.setReservedUntil(Instant.now().plusSeconds(15L * 60L));
         sale.setPaymentCode(UUID.randomUUID().toString());
 
         Sale saved = saleRepo.save(sale);
